@@ -122,6 +122,7 @@ vertical slides."
 
   :translate-alist
   '((headline     . org-ioslide-headline)
+    (item         . org-ioslide-item)
     (section      . org-ioslide-section)
     (template     . org-ioslide-template)
     (center-block . org-ioslide-center-block)
@@ -276,6 +277,54 @@ CONTENTS is nil. NFO is a plist holding contextual information."
        (org-element-property :value export-block)
        "</section>\n</aside>\n")
     (org-html-export-block export-block contents info)))
+
+;;;; Item
+(defun org-ioslide-format-list-item (contents type checkbox info
+					     &optional term-counter-id
+					     headline)
+  "Format a list item into org-ioslide."
+  (let ((checkbox (concat (org-html-checkbox checkbox) (and checkbox " ")))
+	(br (org-html-close-tag "br" nil info)))
+    (concat
+     (case type
+       (ordered
+	(let* ((counter term-counter-id)
+	       (extra (if counter (format " value=\"%s\"" counter) "")))
+	  (concat
+	   (format "<li%s>" extra)
+	   (when headline (concat headline br)))))
+       (unordered
+	(let* ((id term-counter-id)
+	       (extra (if id (format " id=\"%s\"" id) "")))
+	  (concat
+	   (format "<li%s>" extra)
+	   (when headline (concat headline br)))))
+       (descriptive
+	(let* ((term term-counter-id))
+	  (setq term (or term "(no term)"))
+	  ;; Check-boxes in descriptive lists are associated to tag.
+	  (concat (format "<dt> %s </dt>"
+			  (concat checkbox term))
+		  "<dd>"))))
+     (unless (eq type 'descriptive) checkbox)
+     contents
+     (case type
+       (ordered "</li>")
+       (unordered "</li>")
+       (descriptive "</dd>")))))
+
+(defun org-ioslide-item ()
+  "Transcode an ITEM element from Org to org-ioslide.
+CONTENTS holds the contents of the item.  INFO is a plist holding
+contextual information."
+  (let* ((plain-list (org-export-get-parent item))
+	 (type (org-element-property :type plain-list))
+	 (counter (org-element-property :counter item))
+	 (checkbox (org-element-property :checkbox item))
+	 (tag (let ((tag (org-element-property :tag item)))
+		(and tag (org-export-data tag info)))))
+    (org-ioslide-format-list-item
+     contents type checkbox info (or tag counter))))
 
 ;;;; Src Block
 
